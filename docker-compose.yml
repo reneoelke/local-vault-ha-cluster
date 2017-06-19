@@ -1,0 +1,64 @@
+version: "2"
+
+services:
+  rsyslog:
+    build: ./rsyslog
+    image: local/rsyslog:1.0.0
+
+  dynamodb:
+    build: ./dynamodb
+    image: local/dynamodb:1.0.0
+    volumes:
+      - ./.dynamodb:/var/dynamodb_wd/db
+    links:
+      - rsyslog:rsyslog
+
+  vault:
+    build: ./nginx
+    image: local/vault:1.0.0
+    links:
+      - rsyslog:rsyslog
+      - vault-lb:vault-lb
+    ports:
+      - "8200:8200"
+
+  vault-lb:
+    build: ./haproxy
+    image: local/vault-lb:1.0.0
+    links:
+      - rsyslog:rsyslog
+      - vault-node-01:vault-node-01
+      - vault-node-02:vault-node-02
+      - vault-node-03:vault-node-03
+    ports:
+      - "8820:8200"
+
+  vault-node-01:
+    build: ./vault
+    image: local/vault-node-01:1.0.0
+    ports:
+      - "18200:8200"
+    links:
+      - rsyslog:rsyslog
+      - dynamodb:dynamodb
+    restart: on-failure
+
+  vault-node-02:
+    build: ./vault
+    image: local/vault-node-02:1.0.0
+    ports:
+      - "28200:8200"
+    links:
+      - rsyslog:rsyslog
+      - dynamodb:dynamodb
+    restart: on-failure
+
+  vault-node-03:
+    build: ./vault
+    image: local/vault-node-03:1.0.0
+    ports:
+      - "38200:8200"
+    links:
+      - rsyslog:rsyslog
+      - dynamodb:dynamodb
+    restart: on-failure
